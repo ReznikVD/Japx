@@ -33,6 +33,7 @@ private struct Consts {
         static let data = "data"
         static let id = "id"
         static let type = "type"
+        static let innerType = "innerType"
         static let included = "included"
         static let relationships = "relationships"
         static let attributes = "attributes"
@@ -363,6 +364,11 @@ private extension JapxKit.Decoder {
  
     static func resolve(object: Parameters, allObjects: [TypeIdPair: Parameters], paramsDict: NSDictionary, options: JapxKit.Decoder.Options) throws -> Parameters {
         var attributes = (try? object.dictionary(for: Consts.APIKeys.attributes)) ?? Parameters()
+        
+        if let innerType = attributes[Consts.APIKeys.type] {
+            attributes[Consts.APIKeys.innerType] = innerType
+        }
+        
         attributes[Consts.APIKeys.type] = object[Consts.APIKeys.type]
         attributes[Consts.APIKeys.id] = object[Consts.APIKeys.id]
         
@@ -418,9 +424,18 @@ private extension JapxKit.Decoder {
     
     static func resolveAttributes(from objects: [TypeIdPair: NSMutableDictionary]) throws {
         objects.values.forEach { (object) in
-            let attributes = try? object.dictionary(for: Consts.APIKeys.attributes)
-            attributes?.forEach { object[$0] = $1 }
-            object.removeObject(forKey: Consts.APIKeys.attributes)
+            if let attributes = try? object.dictionary(for: Consts.APIKeys.attributes),
+               let mutableAttributes = attributes.mutableCopy() as? NSMutableDictionary {
+                if let innerType = mutableAttributes[Consts.APIKeys.type] {
+                    mutableAttributes[Consts.APIKeys.innerType] = innerType
+                }
+                
+                mutableAttributes.forEach {
+                    object[$0.key] = $0.value
+                }
+                
+                object.removeObject(forKey: Consts.APIKeys.attributes)
+            }
         }
     }
     
